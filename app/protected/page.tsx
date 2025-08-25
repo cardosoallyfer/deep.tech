@@ -1,35 +1,21 @@
-import { redirect } from "next/navigation";
+'use client';
 
-import { createClient } from "@/lib/supabase/server";
-import { InfoIcon } from "lucide-react";
-import { FetchDataSteps } from "@/components/tutorial/fetch-data-steps";
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default async function ProtectedPage() {
-  const supabase = await createClient();
+export default function ProtectedPage() {
+  const router = useRouter();
 
-  const { data, error } = await supabase.auth.getClaims();
-  if (error || !data?.claims) {
-    redirect("/auth/login");
-  }
+  useEffect(() => {
+    // Redireciona imediatamente para o dashboard
+    router.replace('/admin/dashboard');
+  }, [router]);
 
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
-      <div className="w-full">
-        <div className="bg-accent text-sm p-3 px-5 rounded-md text-foreground flex gap-3 items-center">
-          <InfoIcon size="16" strokeWidth={2} />
-          This is a protected page that you can only see as an authenticated
-          user
-        </div>
-      </div>
-      <div className="flex flex-col gap-2 items-start">
-        <h2 className="font-bold text-2xl mb-4">Your user details</h2>
-        <pre className="text-xs font-mono p-3 rounded border max-h-32 overflow-auto">
-          {JSON.stringify(data.claims, null, 2)}
-        </pre>
-      </div>
-      <div>
-        <h2 className="font-bold text-2xl mb-4">Next steps</h2>
-        <FetchDataSteps />
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="text-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900 mx-auto"></div>
+        <p className="mt-4 text-sm text-zinc-500">Redirigiendo...</p>
       </div>
     </div>
   );
