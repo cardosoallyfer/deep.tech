@@ -35,5 +35,6 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/login',
+    '/auth/callback',
   ],
 };

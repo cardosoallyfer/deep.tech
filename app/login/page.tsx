@@ -31,11 +31,12 @@ export default function LoginPage() {
         
         if (error) throw error;
         router.push('/admin/dashboard');
+        router.refresh();
       } else {
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
-            emailRedirectTo: `${window.location.origin}/admin/dashboard`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/admin/dashboard`,
           },
         });
         
