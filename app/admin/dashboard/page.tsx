@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function DashboardPage() {
-  const supabase = createClientComponentClient();
   const [stats, setStats] = useState({
     totalSurveys: 0,
     totalResponses: 0,

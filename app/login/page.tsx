@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'password' | 'magic'>('password');
@@ -41,8 +42,9 @@ export default function LoginPage() {
         if (error) throw error;
         setSuccess('¡Magic link enviado! Revisa tu correo electrónico.');
       }
-    } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al iniciar sesión';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -52,7 +54,7 @@ export default function LoginPage() {
     <main className="min-h-screen bg-gradient-to-br from-zinc-50 via-white to-zinc-100">
       {/* Header */}
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <a href="/" className="group inline-flex items-center gap-2">
+        <Link href="/" className="group inline-flex items-center gap-2">
           <span className="relative inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl">
             <span className="absolute inset-0 bg-gradient-to-tr from-indigo-500 via-fuchsia-500 to-rose-500 blur-[8px] opacity-40" />
             <span className="relative z-10 h-6 w-6 rounded-lg bg-white/80" />
@@ -63,7 +65,7 @@ export default function LoginPage() {
               beta
             </span>
           </span>
-        </a>
+        </Link>
         <div className="hidden text-xs text-zinc-500 md:block">
           Encuestas de satisfacción • Argentina
         </div>
@@ -130,19 +132,19 @@ export default function LoginPage() {
                   onClick={() => setMode('password')}
                   className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
                     mode === 'password'
-                      ? 'border-zinc-900 bg-zinc-900 text-white'
-                      : 'border-zinc-200 text-zinc-700 hover:border-zinc-300'
+                      ? 'border-zinc-300 bg-white text-zinc-900 shadow-sm'
+                      : 'border-zinc-200 text-zinc-500 hover:text-zinc-900'
                   }`}
                 >
-                  Email & contraseña
+                  Con contraseña
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode('magic')}
                   className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
                     mode === 'magic'
-                      ? 'border-zinc-900 bg-zinc-900 text-white'
-                      : 'border-zinc-200 text-zinc-700 hover:border-zinc-300'
+                      ? 'border-zinc-300 bg-white text-zinc-900 shadow-sm'
+                      : 'border-zinc-200 text-zinc-500 hover:text-zinc-900'
                   }`}
                 >
                   Magic Link
@@ -151,46 +153,45 @@ export default function LoginPage() {
 
               {/* Error/Success Messages */}
               {error && (
-                <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
                   {error}
                 </div>
               )}
               {success && (
-                <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-600">
+                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-600">
                   {success}
                 </div>
               )}
 
-              {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label htmlFor="email" className="text-xs font-medium text-zinc-700">
-                    Correo electrónico
+                <div>
+                  <label htmlFor="email" className="block text-xs font-medium text-zinc-700">
+                    Email
                   </label>
                   <input
                     id="email"
                     type="email"
-                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200"
+                    className="mt-1 block w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/10"
+                    placeholder="tu@empresa.com"
+                    required
                   />
                 </div>
 
                 {mode === 'password' && (
-                  <div className="space-y-1.5">
-                    <label htmlFor="password" className="text-xs font-medium text-zinc-700">
+                  <div>
+                    <label htmlFor="password" className="block text-xs font-medium text-zinc-700">
                       Contraseña
                     </label>
                     <input
                       id="password"
                       type="password"
-                      required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      className="mt-1 block w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400/10"
                       placeholder="••••••••"
-                      className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200"
+                      required
                     />
                   </div>
                 )}
@@ -198,10 +199,9 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="relative w-full overflow-hidden rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+                  className="relative w-full overflow-hidden rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <span className="absolute -inset-x-10 -top-10 h-16 rotate-6 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-rose-500 opacity-20 blur-xl" />
-                  <span className="relative">
+                  <span className="relative z-10">
                     {loading ? 'Cargando...' : mode === 'password' ? 'Entrar' : 'Enviar Magic Link'}
                   </span>
                 </button>
@@ -209,15 +209,15 @@ export default function LoginPage() {
 
               <p className="mt-6 text-center text-xs leading-relaxed text-zinc-500">
                 Al continuar, aceptas nuestros{' '}
-                <a href="#" className="underline underline-offset-4">Términos</a> y{' '}
-                <a href="#" className="underline underline-offset-4">Política de privacidad</a>.
+                <Link href="#" className="underline underline-offset-4">Términos</Link> y{' '}
+                <Link href="#" className="underline underline-offset-4">Política de privacidad</Link>.
               </p>
             </div>
           </div>
 
           <p className="mt-6 text-center text-xs text-zinc-500">
             ¿No tienes cuenta?{' '}
-            <a href="/register" className="underline underline-offset-4">Solicitar acceso</a>
+            <Link href="/register" className="underline underline-offset-4">Solicitar acceso</Link>
           </p>
         </div>
       </section>
