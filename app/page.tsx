@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { User } from '@supabase/supabase-js';
 
 export default function HomePage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const supabase = createClientComponentClient();
@@ -65,108 +66,103 @@ export default function HomePage() {
             </span>
           </span>
         </div>
-        <Link
-          href="/login"
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
-        >
-          Iniciar sesión
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link href="/demo" className="text-sm font-medium text-zinc-600 hover:text-zinc-900">
+            Demo
+          </Link>
+          <Link href="/login" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800">
+            Iniciar sesión
+          </Link>
+        </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="mx-auto max-w-6xl px-6 py-24 text-center">
-        <div className="mx-auto max-w-3xl">
-          <h1 className="text-5xl font-bold tracking-tight text-zinc-900 sm:text-6xl">
-            Encuestas de satisfacción para{' '}
-            <span className="bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-rose-500 bg-clip-text text-transparent">
-              tiendas físicas
-            </span>
-          </h1>
+      <section className="mx-auto max-w-6xl px-6 py-24">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="relative">
+            <div className="absolute -inset-x-48 -top-12 h-64 bg-gradient-to-tr from-indigo-500/30 via-fuchsia-500/30 to-rose-500/30 blur-3xl" />
+            <h1 className="relative text-5xl font-bold tracking-tight text-zinc-900 sm:text-6xl">
+              Encuestas de satisfacción
+              <br />
+              <span className="bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-rose-600 bg-clip-text text-transparent">
+                para retail físico
+              </span>
+            </h1>
+          </div>
+          
           <p className="mt-6 text-lg leading-8 text-zinc-600">
-            Genera QR codes instantáneos, recopila feedback en tiempo real y mejora la experiencia de tus clientes con métricas NPS, CSAT y 5 estrellas.
+            Conocé la experiencia de tus clientes en tiempo real.
+            <br />
+            QR dinámicos, métricas instantáneas, 100% Argentina.
           </p>
-          <div className="mt-10 flex items-center justify-center gap-4">
+
+          <div className="mt-10 flex items-center justify-center gap-x-6">
             <Link
-              href="/login"
-              className="rounded-lg bg-zinc-900 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
+              href="/register"
+              className="rounded-lg bg-gradient-to-r from-indigo-600 to-fuchsia-600 px-8 py-3 text-sm font-semibold text-white shadow-sm hover:opacity-90"
             >
-              Comenzar gratis
+              Solicitar acceso
             </Link>
             <Link
               href="/demo"
-              className="rounded-lg border border-zinc-300 px-6 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+              className="flex items-center gap-2 text-sm font-semibold leading-6 text-zinc-900"
             >
               Ver demo
+              <span aria-hidden="true">→</span>
             </Link>
           </div>
         </div>
-      </section>
 
-      {/* Features */}
-      <section className="mx-auto max-w-6xl px-6 py-24">
-        <div className="grid gap-8 md:grid-cols-3">
-          <FeatureCard
-            icon="📱"
-            title="QR Instantáneos"
-            description="Genera códigos QR únicos para cada sucursal o campaña en segundos."
-          />
-          <FeatureCard
-            icon="📊"
-            title="Métricas Estándar"
-            description="NPS, CSAT o 5 estrellas como pregunta principal obligatoria."
-          />
-          <FeatureCard
-            icon="🎯"
-            title="Atributos Personalizados"
-            description="Hasta 5 atributos opcionales para evaluar aspectos específicos."
-          />
-          <FeatureCard
-            icon="📈"
-            title="Dashboard en Tiempo Real"
-            description="Visualiza las respuestas y métricas al instante."
-          />
-          <FeatureCard
-            icon="🇦🇷"
-            title="100% en Español"
-            description="Diseñado específicamente para el mercado argentino."
-          />
-          <FeatureCard
-            icon="☁️"
-            title="Sin Instalación"
-            description="100% cloud, accede desde cualquier dispositivo."
-          />
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="mx-auto max-w-6xl px-6 py-24">
-        <div className="rounded-3xl bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-rose-500 p-[2px]">
-          <div className="rounded-3xl bg-white p-12 text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-zinc-900">
-              ¿Listo para mejorar la experiencia de tus clientes?
-            </h2>
-            <p className="mt-4 text-lg text-zinc-600">
-              Comienza gratis y sin tarjeta de crédito.
+        {/* Features Grid */}
+        <div className="mx-auto mt-32 grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-8">
+            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500/10 to-fuchsia-500/10">
+              <span className="text-2xl">📊</span>
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900">NPS en tiempo real</h3>
+            <p className="mt-2 text-sm text-zinc-600">
+              Medí la satisfacción de tus clientes con métricas estándar de la industria.
             </p>
-            <Link
-              href="/login"
-              className="mt-8 inline-flex rounded-lg bg-zinc-900 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
-            >
-              Crear mi primera encuesta →
-            </Link>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-8">
+            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500/10 to-fuchsia-500/10">
+              <span className="text-2xl">🔗</span>
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900">QR dinámicos</h3>
+            <p className="mt-2 text-sm text-zinc-600">
+              Generá códigos QR únicos para cada sucursal, mesa o punto de contacto.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-8">
+            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500/10 to-fuchsia-500/10">
+              <span className="text-2xl">📱</span>
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900">Sin apps</h3>
+            <p className="mt-2 text-sm text-zinc-600">
+              Tus clientes responden desde el navegador, sin descargar nada.
+            </p>
           </div>
         </div>
       </section>
-    </main>
-  );
-}
 
-function FeatureCard({ icon, title, description }: { icon: string; title: string; description: string }) {
-  return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <div className="mb-4 text-3xl">{icon}</div>
-      <h3 className="mb-2 font-semibold text-zinc-900">{title}</h3>
-      <p className="text-sm text-zinc-600">{description}</p>
-    </div>
+      {/* Footer */}
+      <footer className="mx-auto max-w-6xl border-t border-zinc-200 px-6 py-12">
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-zinc-500">
+            © 2024 DeepCX. Hecho con ❤️ en Argentina.
+          </p>
+          <div className="flex gap-6">
+            <Link href="#" className="text-xs text-zinc-500 hover:text-zinc-900">
+              Términos
+            </Link>
+            <Link href="#" className="text-xs text-zinc-500 hover:text-zinc-900">
+              Privacidad
+            </Link>
+          </div>
+        </div>
+      </footer>
+    </main>
   );
 }
