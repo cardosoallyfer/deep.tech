@@ -1,17 +1,18 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const next = requestUrl.searchParams.get('next') || '/admin/dashboard';
 
   if (code) {
-    const supabase = createClientComponentClient();
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  // URL para redirecionar após o login
-  return NextResponse.redirect(new URL(next, requestUrl.origin));
-}   
+  // Redireciona para o dashboard após confirmação do email
+  return NextResponse.redirect(new URL('/dashboard', requestUrl.origin));
+}
