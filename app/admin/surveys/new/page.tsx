@@ -1,8 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+
+// Importación condicional para evitar error en build
+let createClient: any;
+if (typeof window !== 'undefined') {
+  createClient = require('@/lib/supabase/client').createClient;
+}
 
 // ===== Helpers puras (testables) =====
 function addAttrPure(prev: string[], id: string, limit = 5) {
@@ -84,7 +89,6 @@ const DEFAULT_MAIN_BY_METHOD = {
 
 export default function SurveyBuilderPage() {
   const router = useRouter();
-  const supabase = createClient();
   
   // Estados básicos
   const [title, setTitle] = useState('Satisfacción de la Tienda — Palermo');
@@ -93,6 +97,7 @@ export default function SurveyBuilderPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [supabaseReady, setSupabaseReady] = useState(false);
 
   // Colores
   const [primaryHex, setPrimaryHex] = useState<string>('#4F46E5');
@@ -132,6 +137,13 @@ export default function SurveyBuilderPage() {
 
   // Etiquetas auxiliares
   const csatLabels = ['Muy insatisfecho/a', 'Insatisfecho/a', 'Neutro', 'Satisfecho/a', 'Muy satisfecho/a'];
+
+  // Verificar si Supabase está disponible
+  useEffect(() => {
+    if (typeof window !== 'undefined' && createClient) {
+      setSupabaseReady(true);
+    }
+  }, []);
 
   // Efectos
   useEffect(() => {
@@ -180,11 +192,18 @@ export default function SurveyBuilderPage() {
 
   // Guardar encuesta
   async function handleSave() {
+    if (!supabaseReady || !createClient) {
+      setError('La conexión con la base de datos no está disponible. Por favor, verifica la configuración.');
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
     setSuccess(null);
 
     try {
+      const supabase = createClient();
+      
       // Obtener el usuario actual
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -352,6 +371,12 @@ export default function SurveyBuilderPage() {
           </div>
         )}
 
+        {!supabaseReady && (
+          <div className="mb-4 p-4 rounded-xl border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300">
+            <strong>Nota:</strong> La funcionalidad de guardado requiere configuración de base de datos. Puedes usar el modo vista previa mientras tanto.
+          </div>
+        )}
+
         {view === 'edit' ? (
           // ====== EDITOR ======
           <section className="rounded-2xl border border-neutral-200/70 dark:border-neutral-800 bg-white/70 dark:bg-neutral-950/60 backdrop-blur p-5 shadow-sm">
@@ -506,9 +531,9 @@ export default function SurveyBuilderPage() {
               <div className="pt-2 flex items-center gap-2">
                 <button
                   onClick={handleSave}
-                  disabled={isSaving || !title.trim()}
+                  disabled={isSaving || !title.trim() || !supabaseReady}
                   className="h-11 px-6 rounded-xl font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={(!isSaving && title.trim()) ? primaryStyle : undefined}
+                  style={(!isSaving && title.trim() && supabaseReady) ? primaryStyle : undefined}
                 >
                   {isSaving ? 'Guardando...' : 'Guardar encuesta'}
                 </button>
