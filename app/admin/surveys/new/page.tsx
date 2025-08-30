@@ -9,6 +9,19 @@ if (typeof window !== 'undefined') {
   createClient = require('@/lib/supabase/client').createClient;
 }
 
+// Tipo para los atributos del sistema
+interface SystemAttribute {
+  id: string;
+  code: string;
+}
+
+// Tipo para Survey retornado por Supabase
+interface Survey {
+  id: string;
+  survey_code: string;
+  // otros campos según sea necesario
+}
+
 // ===== Helpers puras (testables) =====
 function addAttrPure(prev: string[], id: string, limit = 5) {
   if (prev.includes(id) || prev.length >= limit) return prev;
@@ -231,9 +244,10 @@ export default function SurveyBuilderPage() {
           created_by: user.id,
         })
         .select()
-        .single();
+        .single() as { data: Survey | null, error: any };
 
       if (surveyError) throw surveyError;
+      if (!survey) throw new Error('No se pudo crear la encuesta');
 
       // Crear instancia por defecto
       const { error: instanceError } = await supabase
@@ -253,13 +267,13 @@ export default function SurveyBuilderPage() {
         .from('attributes')
         .select('id, code')
         .in('code', selectedAttrIds)
-        .eq('is_system', true);
+        .eq('is_system', true) as { data: SystemAttribute[] | null, error: any };
 
       if (attrError) throw attrError;
 
-      // Relacionar atributos con la encuesta
+      // Relacionar atributos con la encuesta (LÍNEA CORREGIDA)
       if (systemAttrs && systemAttrs.length > 0) {
-        const surveyAttrs = systemAttrs.map((attr, index) => ({
+        const surveyAttrs = systemAttrs.map((attr: SystemAttribute, index: number) => ({
           survey_id: survey.id,
           attribute_id: attr.id,
           position: index,
@@ -325,139 +339,279 @@ export default function SurveyBuilderPage() {
       <svg
         viewBox="0 0 24 24"
         className={`w-8 h-8 cursor-pointer drop-shadow-sm ${
-          filled ? 'fill-yellow-400' : 'fill-neutral-300 dark:fill-neutral-700'
+          filled ? 'text-yellow-400 fill-current' : 'text-neutral-300 dark:text-neutral-700 fill-current'
         }`}
         onClick={onClick}
       >
-        <path d="M12 .587l3.668 7.429 8.2 1.193-5.934 5.788 1.402 8.168L12 18.896l-7.336 3.869 1.402-8.168L.132 9.209l8.2-1.193L12 .587z" />
+        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
       </svg>
     );
   }
 
-  return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-indigo-50 via-white to-emerald-50 dark:from-neutral-950 dark:via-neutral-950 dark:to-neutral-900 text-neutral-900 dark:text-neutral-100">
-      <div className="max-w-4xl mx-auto p-6 lg:p-8">
-        {/* Encabezado */}
-        <header className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Crear encuesta</h1>
-            <p className="text-sm opacity-70 mt-1">Configura tu encuesta de satisfacción</p>
-          </div>
-          <div className="flex items-center gap-2">
+  // ===== RENDER =====
+  if (view === 'preview') {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+        <div className="w-full max-w-2xl space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">Vista previa</h1>
             <button
-              onClick={() => router.push('/admin/surveys')}
-              className="h-10 px-4 rounded-xl font-medium border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 shadow-sm"
+              onClick={() => setView('edit')}
+              className="px-4 py-2 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200/70 dark:border-neutral-800 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800"
             >
-              Cancelar
-            </button>
-            <button
-              onClick={() => setView(toggleViewPure(view))}
-              className="h-10 px-4 rounded-xl font-medium border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 shadow-sm"
-            >
-              {view === 'edit' ? 'Ver vista previa' : 'Volver a edición'}
+              ← Volver al editor
             </button>
           </div>
-        </header>
 
-        {/* Alertas */}
+          {/* Preview Card */}
+          <div className="rounded-2xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-lg p-8 space-y-6">
+            {/* Logo */}
+            {showLogo && logoUrl && (
+              <div className="flex justify-center">
+                <img src={logoUrl} alt="Logo" className="h-16 object-contain" />
+              </div>
+            )}
+
+            {/* Título */}
+            <h2 className="text-xl font-semibold text-center">{title}</h2>
+
+            {/* Pregunta principal */}
+            <div className="space-y-4">
+              <p className="text-center font-medium">{mainQuestion}</p>
+
+              {/* NPS */}
+              {method === 'NPS' && (
+                <div className="flex gap-1 justify-center">
+                  {Array.from({ length: 11 }, (_, i) => (
+                    <Pill key={i} active={nps === i} onClick={() => setNps(i)}>
+                      {i}
+                    </Pill>
+                  ))}
+                </div>
+              )}
+
+              {/* CSAT */}
+              {method === 'CSAT' && (
+                <div className="flex gap-1 justify-center flex-wrap">
+                  {[1, 2, 3, 4, 5].map((v) => (
+                    <Pill key={v} active={csat === v} onClick={() => setCsat(v)}>
+                      {v}
+                    </Pill>
+                  ))}
+                </div>
+              )}
+
+              {/* Stars */}
+              {method === 'STARS' && (
+                <div className="flex gap-1 justify-center">
+                  {[1, 2, 3, 4, 5].map((v) => (
+                    <Star key={v} filled={v <= stars} onClick={() => setStars(v)} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Atributos */}
+            {!!selectedAttrIds.length && (
+              <div className="mt-5 space-y-3">
+                <p className="text-sm font-medium">Evalúa estos aspectos (opcional)</p>
+                <div className="space-y-2">
+                  {selectedAttrIds.map((id) => {
+                    const label = ATTR_LIBRARY.find((x) => x.id === id)?.label || id;
+                    return (
+                      <div key={id} className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white/50 dark:bg-neutral-900/50 p-3">
+                        <span className="text-sm">{label}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setAttrRating(id, 1)}
+                            className={`h-9 px-3 rounded-full text-sm border transition ${
+                              attrRatings[id] === 1 
+                                ? 'bg-red-100 border-red-300 dark:bg-red-900/30 dark:border-red-800' 
+                                : 'bg-white dark:bg-neutral-900 border-neutral-200/70 dark:border-neutral-800'
+                            }`}
+                          >
+                            😞
+                          </button>
+                          <button
+                            onClick={() => setAttrRating(id, 2)}
+                            className={`h-9 px-3 rounded-full text-sm border transition ${
+                              attrRatings[id] === 2 
+                                ? 'bg-yellow-100 border-yellow-300 dark:bg-yellow-900/30 dark:border-yellow-800' 
+                                : 'bg-white dark:bg-neutral-900 border-neutral-200/70 dark:border-neutral-800'
+                            }`}
+                          >
+                            😐
+                          </button>
+                          <button
+                            onClick={() => setAttrRating(id, 3)}
+                            className={`h-9 px-3 rounded-full text-sm border transition ${
+                              attrRatings[id] === 3 
+                                ? 'bg-green-100 border-green-300 dark:bg-green-900/30 dark:border-green-800' 
+                                : 'bg-white dark:bg-neutral-900 border-neutral-200/70 dark:border-neutral-800'
+                            }`}
+                          >
+                            😊
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Comentario */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{commentLabel}</label>
+              <textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Escribe aquí..."
+                className="w-full h-24 px-3 py-2 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 resize-none"
+              />
+            </div>
+
+            {/* Contacto */}
+            <div className="space-y-3">
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={wantsContact}
+                  onChange={(e) => setWantsContact(e.target.checked)}
+                  className="w-4 h-4 rounded border-neutral-300 dark:border-neutral-700"
+                />
+                <span className="text-sm">Quiero que me contacten</span>
+              </label>
+
+              {wantsContact && (
+                <div className="space-y-3 pl-7">
+                  <input
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    placeholder="Nombre"
+                    className="w-full h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900"
+                  />
+                  <input
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="Email"
+                    type="email"
+                    className="w-full h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900"
+                  />
+                  <input
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    placeholder="Teléfono (opcional)"
+                    type="tel"
+                    className="w-full h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3 pt-4">
+              <button
+                onClick={resetPreview}
+                className="flex-1 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700"
+              >
+                Limpiar
+              </button>
+              <button
+                className="flex-1 h-12 rounded-xl font-medium text-white shadow-sm"
+                style={primaryStyle}
+              >
+                Enviar respuesta
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Vista de edición
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Crear nueva encuesta</h1>
+          <p className="text-neutral-600 dark:text-neutral-400 mt-2">
+            Configura los parámetros de tu encuesta de satisfacción
+          </p>
+        </div>
+
+        {/* Mensajes de estado */}
         {error && (
-          <div className="mb-4 p-4 rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 text-red-700 dark:text-red-300">
+          <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
             {error}
           </div>
         )}
+
         {success && (
-          <div className="mb-4 p-4 rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300">
+          <div className="mb-6 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300">
             {success}
           </div>
         )}
 
-        {!supabaseReady && (
-          <div className="mb-4 p-4 rounded-xl border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300">
-            <strong>Nota:</strong> La funcionalidad de guardado requiere configuración de base de datos. Puedes usar el modo vista previa mientras tanto.
-          </div>
-        )}
-
-        {view === 'edit' ? (
-          // ====== EDITOR ======
-          <section className="rounded-2xl border border-neutral-200/70 dark:border-neutral-800 bg-white/70 dark:bg-neutral-950/60 backdrop-blur p-5 shadow-sm">
+        {/* Main Content */}
+        <div className="space-y-8">
+          {/* Card de configuración */}
+          <div className="rounded-2xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm p-6">
             <div className="space-y-6">
               {/* TÍTULO */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Título de la encuesta</label>
+                <label htmlFor="title" className="text-sm font-medium">
+                  Título de la encuesta
+                </label>
                 <input
+                  id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ej.: Satisfacción de la tienda — Recoleta"
+                  placeholder="Ej: Satisfacción de la Tienda — Palermo"
                   className="w-full h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
 
-              {/* METODOLOGÍA + Pregunta principal */}
+              {/* MÉTODO */}
               <div className="space-y-3">
-                <label className="text-sm font-medium">Metodología</label>
+                <label className="text-sm font-medium">Tipo de pregunta principal</label>
                 <div className="flex gap-2 flex-wrap">
-                  <MethodToggle value="NPS" label="NPS (0–10)" />
-                  <MethodToggle value="CSAT" label="CSAT (1–5)" />
-                  <MethodToggle value="STARS" label="Estrellas (★ 1–5)" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs text-neutral-500">Texto de la pregunta principal</label>
-                  <input
-                    value={mainQuestion}
-                    onChange={(e) => {
-                      setMainQuestion(e.target.value);
-                      if (!mainDirty) setMainDirty(true);
-                    }}
-                    placeholder={DEFAULT_MAIN_BY_METHOD[method]}
-                    className="w-full h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
+                  <MethodToggle value="NPS" label="NPS (0-10)" />
+                  <MethodToggle value="CSAT" label="CSAT (1-5)" />
+                  <MethodToggle value="STARS" label="Estrellas (⭐)" />
                 </div>
               </div>
 
-              {/* Apariencia */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Color primario</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={normalizedPrimary}
-                      onChange={(e) => setPrimaryHex(e.target.value)}
-                      className="h-10 w-10 cursor-pointer rounded"
-                    />
-                    <input
-                      value={primaryHex}
-                      onChange={(e) => setPrimaryHex(e.target.value)}
-                      placeholder="#4F46E5"
-                      className="flex-1 h-10 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Logo (opcional)</label>
-                  <div className="flex gap-2">
-                    <label className="inline-flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={showLogo} onChange={(e) => setShowLogo(e.target.checked)} />
-                      Mostrar
-                    </label>
-                    <input
-                      value={logoUrl}
-                      onChange={(e) => setLogoUrl(e.target.value)}
-                      placeholder="URL del logo"
-                      disabled={!showLogo}
-                      className="flex-1 h-10 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Campo abierto */}
+              {/* PREGUNTA PRINCIPAL */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Texto del campo de comentario</label>
+                <label htmlFor="mainQuestion" className="text-sm font-medium">
+                  Pregunta principal
+                </label>
                 <input
+                  id="mainQuestion"
+                  value={mainQuestion}
+                  onChange={(e) => {
+                    setMainQuestion(e.target.value);
+                    setMainDirty(true);
+                  }}
+                  placeholder="Ej: ¿Qué tan satisfecho estás con tu experiencia?"
+                  className="w-full h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+
+              {/* COMENTARIO */}
+              <div className="space-y-2">
+                <label htmlFor="commentLabel" className="text-sm font-medium">
+                  Etiqueta del comentario
+                </label>
+                <input
+                  id="commentLabel"
                   value={commentLabel}
                   onChange={(e) => setCommentLabel(e.target.value)}
-                  placeholder="Ej.: Deja un comentario (opcional)"
+                  placeholder="Ej: Deja un comentario (opcional)"
                   className="w-full h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
@@ -508,15 +662,18 @@ export default function SurveyBuilderPage() {
                             key={a.id}
                             className={`flex items-center gap-2 rounded-xl border p-2 text-sm cursor-pointer transition ${
                               checked
-                                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-800'
-                                : 'bg-white dark:bg-neutral-900 border-neutral-200/70 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800'
-                            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700'
+                                : disabled
+                                ? 'opacity-50 cursor-not-allowed bg-neutral-50 dark:bg-neutral-900/50 border-neutral-200 dark:border-neutral-800'
+                                : 'hover:bg-neutral-50 dark:hover:bg-neutral-800 border-neutral-200 dark:border-neutral-800'
+                            }`}
                           >
-                            <input 
-                              type="checkbox" 
+                            <input
+                              type="checkbox"
                               checked={checked}
-                              onChange={() => (!disabled || checked) ? toggleSelectAttr(a.id) : null}
                               disabled={disabled}
+                              onChange={() => toggleSelectAttr(a.id)}
+                              className="w-4 h-4 rounded"
                             />
                             <span>{a.label}</span>
                           </label>
@@ -527,189 +684,68 @@ export default function SurveyBuilderPage() {
                 </details>
               </div>
 
-              {/* ACCIONES */}
-              <div className="pt-2 flex items-center gap-2">
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving || !title.trim() || !supabaseReady}
-                  className="h-11 px-6 rounded-xl font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={(!isSaving && title.trim() && supabaseReady) ? primaryStyle : undefined}
-                >
-                  {isSaving ? 'Guardando...' : 'Guardar encuesta'}
-                </button>
-                <button
-                  onClick={resetPreview}
-                  className="h-11 px-4 rounded-xl font-medium border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-                >
-                  Limpiar vista previa
-                </button>
-              </div>
-            </div>
-          </section>
-        ) : (
-          // ====== VISTA PREVIA ======
-          <section className="rounded-2xl border border-neutral-200/70 dark:border-neutral-800 bg-white/70 dark:bg-neutral-950/60 backdrop-blur p-5 shadow-sm">
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-5 shadow-sm">
-                {/* Encabezado de la encuesta */}
-                <div className="mb-4 flex items-center gap-3">
-                  {showLogo && logoUrl && (
-                    <img src={logoUrl} alt="Logo" className="h-10 w-10 rounded-xl object-cover border border-neutral-200 dark:border-neutral-800" />
-                  )}
-                  <h3 className="text-base font-semibold">{title || 'Título de la encuesta'}</h3>
-                </div>
-
-                {/* Pregunta principal */}
-                <div className="space-y-2">
-                  <p className="text-sm">{mainQuestion || DEFAULT_MAIN_BY_METHOD[method]}</p>
-
-                  {method === 'NPS' && (
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2 justify-center">
-                        {Array.from({ length: 11 }, (_, i) => i).map((i) => (
-                          <Pill key={i} active={nps === i} onClick={() => setNps(i)}>
-                            {i}
-                          </Pill>
-                        ))}
-                      </div>
-                      <div className="flex justify-between text-[11px] text-neutral-500">
-                        <span>No recomendaría</span>
-                        <span>Recomendaría mucho</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {method === 'CSAT' && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-center gap-2">
-                        {Array.from({ length: 5 }, (_, i) => i + 1).map((i) => (
-                          <Pill key={i} active={csat === i} onClick={() => setCsat(i)}>
-                            {i}
-                          </Pill>
-                        ))}
-                      </div>
-                      <div className="flex justify-between text-[11px] text-neutral-500">
-                        {csatLabels.map((l) => (
-                          <span key={l} className="text-center flex-1">{l}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {method === 'STARS' && (
-                    <div className="flex items-center justify-center gap-1">
-                      {Array.from({ length: 5 }, (_, i) => i + 1).map((i) => (
-                        <Star key={i} filled={i <= stars} onClick={() => setStars(i)} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Atributos */}
-                {!!selectedAttrIds.length && (
-                  <div className="mt-5 space-y-3">
-                    <p className="text-sm font-medium">Evalúa estos aspectos (opcional)</p>
-                    <div className="space-y-2">
-                      {selectedAttrIds.map((id) => {
-                        const label = ATTR_LIBRARY.find((x) => x.id === id)?.label || id;
-                        return (
-                          <div key={id} className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white/50 dark:bg-neutral-900/50 p-3">
-                            <span className="text-sm">{label}</span>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => setAttrRating(id, 1)}
-                                className={`h-9 px-3 rounded-full text-sm border transition ${
-                                  attrRatings[id] === 1 
-                                    ? 'bg-red-100 border-red-300 dark:bg-red-900/30 dark:border-red-800' 
-                                    : 'bg-white dark:bg-neutral-900 border-neutral-200/70 dark:border-neutral-800'
-                                }`}
-                              >
-                                😞
-                              </button>
-                              <button
-                                onClick={() => setAttrRating(id, 2)}
-                                className={`h-9 px-3 rounded-full text-sm border transition ${
-                                  attrRatings[id] === 2 
-                                    ? 'bg-yellow-100 border-yellow-300 dark:bg-yellow-900/30 dark:border-yellow-800' 
-                                    : 'bg-white dark:bg-neutral-900 border-neutral-200/70 dark:border-neutral-800'
-                                }`}
-                              >
-                                😐
-                              </button>
-                              <button
-                                onClick={() => setAttrRating(id, 3)}
-                                className={`h-9 px-3 rounded-full text-sm border transition ${
-                                  attrRatings[id] === 3 
-                                    ? 'bg-emerald-100 border-emerald-300 dark:bg-emerald-900/30 dark:border-emerald-800' 
-                                    : 'bg-white dark:bg-neutral-900 border-neutral-200/70 dark:border-neutral-800'
-                                }`}
-                              >
-                                😊
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Campo de comentario */}
-                <div className="mt-5 space-y-2">
-                  <label className="text-sm font-medium">{commentLabel || 'Comentario'}</label>
-                  <textarea
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    rows={3}
-                    placeholder="Escribe aquí..."
-                    className="w-full px-3 py-2 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
-
-                {/* Acciones */}
-                <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
-                  <button
-                    onClick={() => setWantsContact(!wantsContact)}
-                    className="h-12 px-5 rounded-xl font-semibold border-2 transition bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-                  >
-                    {wantsContact ? '✓ Quiero que me contacten' : 'Quiero que me contacten'}
-                  </button>
-                  <button
-                    className="h-12 px-5 rounded-xl font-semibold shadow hover:brightness-110"
-                    style={primaryStyle}
-                  >
-                    Enviar respuesta
-                  </button>
-                </div>
-
-                {/* Campos de contacto */}
-                {wantsContact && (
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* PERSONALIZACIÓN */}
+              <div className="space-y-3">
+                <label className="text-sm font-medium">Personalización</label>
+                <div className="space-y-3">
+                  {/* Logo */}
+                  <label className="flex items-center gap-3">
                     <input
-                      value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
-                      placeholder="Nombre"
-                      className="h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900"
+                      type="checkbox"
+                      checked={showLogo}
+                      onChange={(e) => setShowLogo(e.target.checked)}
+                      className="w-4 h-4 rounded"
                     />
+                    <span className="text-sm">Mostrar logo</span>
+                  </label>
+
+                  {showLogo && (
                     <input
-                      type="email"
-                      value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
-                      placeholder="Email"
-                      className="h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900"
+                      value={logoUrl}
+                      onChange={(e) => setLogoUrl(e.target.value)}
+                      placeholder="URL del logo (ej: https://ejemplo.com/logo.png)"
+                      className="w-full h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900"
                     />
+                  )}
+
+                  {/* Color */}
+                  <div className="flex items-center gap-3">
+                    <label htmlFor="primaryColor" className="text-sm">Color principal:</label>
                     <input
-                      value={contactPhone}
-                      onChange={(e) => setContactPhone(e.target.value)}
-                      placeholder="Teléfono"
-                      className="h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900"
+                      id="primaryColor"
+                      value={primaryHex}
+                      onChange={(e) => setPrimaryHex(e.target.value)}
+                      placeholder="#4F46E5"
+                      className="w-32 h-11 px-3 rounded-xl border border-neutral-200/70 dark:border-neutral-800 bg-white dark:bg-neutral-900"
+                    />
+                    <div
+                      className="w-11 h-11 rounded-xl border border-neutral-300 dark:border-neutral-700"
+                      style={{ backgroundColor: normalizedPrimary }}
                     />
                   </div>
-                )}
+                </div>
               </div>
             </div>
-          </section>
-        )}
+          </div>
+
+          {/* Botones de acción */}
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setView('preview')}
+              className="px-6 py-3 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200/70 dark:border-neutral-800 font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800"
+            >
+              Vista previa →
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving || !supabaseReady}
+              className="px-6 py-3 rounded-xl font-medium text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              style={primaryStyle}
+            >
+              {isSaving ? 'Guardando...' : 'Guardar encuesta'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
